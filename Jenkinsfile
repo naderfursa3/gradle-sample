@@ -1,44 +1,74 @@
 pipeline {
-	agent none
+    
+    agent any
+    
+    stages{
+        
+        stage('Setup Parameters') {
+            steps {
+                script {
+                    properties(
+                        [parameters([
+                            choice(choices: ['jar', 'tar', 'zip'], 
+                            description: 'Please Choose the Artifact Type To Create',
+                            name: 'ARTIFACT_TYPE')
+                            ]) 
+                        ])
+                }                
+            }
+        }
+        //
+        stage('Clone from Github') {
+            steps {
+                git branch: 'main', url:'https://github.com/naderfursa3/gradle-sample.git'
+            }
+        }
+        //
+        stage('Build JAR') {
+            when {
+                expression {
+                    return params.ARTIFACT_TYPE == "jar"
+                }
+            }
+            steps{
+                script{
+                    dir('complete') {
+                        sh "./gradlew clean jar"
+                }
+            }
+        }
+     }
+    //
+    stage('Build TAR') {
+        when {
+            expression {
+                return params.ARTIFACT_TYPE == "tar"
+            }
+        }
+        steps{
+            script{
+                dir('complete') {
+                    sh "./gradlew clean distTar"
+                }
+            }
+        }
+    }
 
-	triggers {
-		pollSCM 'H/10 * * * *'
-	}
+    stage('Build ZIP') {
+        when {
+            expression {
+                return params.ARTIFACT_TYPE == "zip"
+            }
+        }
+        steps{
+            script{
+                dir('complete') {
+                    sh "./gradlew clean distZip"
+                }
+            }
+        }
+    }
 
-	options {
-		disableConcurrentBuilds()
-		buildDiscarder(logRotator(numToKeepStr: '14'))
-	}
 
-	stages {
-		stage("test: baseline (jdk8)") {
-			agent {
-				docker {
-					image 'adoptopenjdk/openjdk8:latest'
-					args '-v $HOME/.m2:/tmp/jenkins-home/.m2'
-				}
-			}
-			options { timeout(time: 30, unit: 'MINUTES') }
-			steps {
-				sh 'test/run.sh'
-			}
-		}
-
-	}
-
-	post {
-		changed {
-			script {
-				slackSend(
-						color: (currentBuild.currentResult == 'SUCCESS') ? 'good' : 'danger',
-						channel: '#sagan-content',
-						message: "${currentBuild.fullDisplayName} - `${currentBuild.currentResult}`\n${env.BUILD_URL}")
-				emailext(
-						subject: "[${currentBuild.fullDisplayName}] ${currentBuild.currentResult}",
-						mimeType: 'text/html',
-						recipientProviders: [[$class: 'CulpritsRecipientProvider'], [$class: 'RequesterRecipientProvider']],
-						body: "<a href=\"${env.BUILD_URL}\">${currentBuild.fullDisplayName} is reported as ${currentBuild.currentResult}</a>")
-			}
-		}
-	}
+}
 }
