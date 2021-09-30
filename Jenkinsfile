@@ -1,22 +1,34 @@
 pipeline {
     
     agent any
-    
+    //
+    parameters {
+        choice (
+            name: 'ARTIFACT_TYPE',
+            choices: ['jar', 'tar', 'zip'],
+            description: 'Please Choose the Artifact Type To Create'
+        )
+    }
+    //
     stages{
         
-        stage('Setup Parameters') {
-            steps {
-                script {
-                    properties(
-                        [parameters([
-                            choice(choices: ['jar', 'tar', 'zip'], 
-                            description: 'Please Choose the Artifact Type To Create',
-                            name: 'ARTIFACT_TYPE')
-                            ]) 
-                        ])
-                }                
-            }
+        environment{
+            MY_VAR='NADER'
         }
+        
+        // stage('Setup Parameters') {
+        //     steps {
+        //         script {
+        //             properties(
+        //                 [parameters([
+        //                     choice(choices: ['jar', 'tar', 'zip'], 
+        //                     description: 'Please Choose the Artifact Type To Create',
+        //                     name: 'ARTIFACT_TYPE')
+        //                     ]) 
+        //                 ])
+        //         }                
+        //     }
+        // }
         //
         stage('Clone from Github') {
             steps {
@@ -49,6 +61,7 @@ pipeline {
             script{
                 dir('complete') {
                     sh "./gradlew clean distTar"
+                    echo env.MY_VAR
                 }
             }
         }
